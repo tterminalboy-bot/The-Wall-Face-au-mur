@@ -38,7 +38,7 @@
             display: flex;
             flex-direction: column;
             gap: 15px;
-            width: 220px;
+            width: 250px;
         }
         .panel {
             background: #334155;
@@ -61,17 +61,38 @@
             font-weight: bold;
             color: #facc15;
         }
+        .tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 6px;
+            font-size: 0.8rem;
+            background: #475569;
+        }
+        .tab-btn.active {
+            background: #3b82f6;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
         button {
             background: #3b82f6;
             color: white;
             border: none;
-            padding: 10px 15px;
+            padding: 8px 12px;
             border-radius: 6px;
-            font-size: 1rem;
+            font-size: 0.9rem;
             cursor: pointer;
             font-weight: bold;
             transition: background 0.2s;
             width: 100%;
+            margin-top: 5px;
         }
         button:hover {
             background: #2563eb;
@@ -81,7 +102,7 @@
             cursor: not-allowed;
         }
         .instructions {
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             color: #94a3b8;
             line-height: 1.4;
         }
@@ -90,7 +111,7 @@
 <body>
 
     <h1>LE MUR</h1>
-    <p style="margin-top: 0; color: #94a3b8;">Clique en haut du mur pour lacher une boule !</p>
+    <p style="margin-top: 0; color: #94a3b8;">Clique en haut du mur pour lâcher une boule !</p>
 
     <div class="game-container">
         <canvas id="wallCanvas" width="450" height="600"></canvas>
@@ -103,18 +124,32 @@
 
             <div class="panel">
                 <h2>Boules Restantes</h2>
-                <div class="balls-left" id="ballsDisplay">5</div>
+                <div class="balls-left" id="ballsDisplay">10</div>
             </div>
 
             <div class="panel">
                 <h2>Boutique</h2>
-                <p class="instructions">Pack de 3 boules : <strong>50 points</strong></p>
-                <button id="buyButton" onclick="buyBalls()">Acheter</button>
+                <div class="tabs">
+                    <button class="tab-btn active" onclick="switchTab('balls')">Boules</button>
+                    <button class="tab-btn" onclick="switchTab('upgrades')">Améliorations</button>
+                </div>
+
+                <div id="tab-balls" class="tab-content active">
+                    <p class="instructions">1 Boule : <strong>15 pts</strong></p>
+                    <button id="buy1Button" onclick="buyBalls(1, 15)">Acheter 1</button>
+                    <p class="instructions" style="margin-top: 10px;">Pack de 20 boules : <strong>250 pts</strong></p>
+                    <button id="buy20Button" onclick="buyBalls(20, 250)">Acheter 20</button>
+                </div>
+
+                <div id="tab-upgrades" class="tab-content">
+                    <p class="instructions">Multiplicateur x2 : <strong>300 pts</strong></p>
+                    <button id="buyMultiplier" onclick="buyUpgrade()">Améliorer</button>
+                </div>
             </div>
 
             <div class="panel">
-                <h2>Aide</h2>
-                <p class="instructions">Plus les boules tombent dans les cases extérieures, plus tu gagnes gros !</p>
+                <h2>Infos</h2>
+                <p class="instructions">Le centre rapporte le plus gros score ! Attention aux barrières anti-triche en haut.</p>
             </div>
         </div>
     </div>
@@ -124,17 +159,17 @@
         const ctx = canvas.getContext('2d');
 
         let score = 0;
-        let ballsCount = 5;
+        let ballsCount = 10;
+        let scoreMultiplier = 1;
         let balls = [];
         let pegs = [];
         let slots = [];
+        let barriers = [];
 
-        // Configuration du mur
         const rows = 8;
         const cols = 9;
         const pegRadius = 6;
         
-        // Initialisation des picots
         function initPegs() {
             pegs = [];
             for (let r = 0; r < rows; r++) {
@@ -143,17 +178,25 @@
                 for (let c = 0; c < numCols; c++) {
                     pegs.push({
                         x: startX + c * 45,
-                        y: 80 + r * 50
+                        y: 110 + r * 50
                     });
                 }
             }
         }
 
-        // Initialisation des fentes de score en bas
+        // Barrières obliques en haut pour empêcher de tomber direct dans les trous
+        function initBarriers() {
+            barriers = [
+                { x1: 0, y1: 50, x2: 90, y2: 100 },
+                { x1: 450, y1: 50, x2: 360, y2: 100 }
+            ];
+        }
+
+        // Fentes de score inversées : plus haut score au milieu
         function initSlots() {
             slots = [];
             const slotWidth = 450 / 7;
-            const values = [100, 25, 10, 5, 10, 25, 100];
+            const values = [5, 15, 50, 200, 50, 15, 5];
             for (let i = 0; i < 7; i++) {
                 slots.push({
                     x: i * slotWidth,
@@ -164,9 +207,9 @@
         }
 
         initPegs();
+        initBarriers();
         initSlots();
 
-        // Classe Boule
         class Ball {
             constructor(x) {
                 this.x = x;
@@ -180,15 +223,12 @@
             update() {
                 if (!this.active) return;
 
-                // Gravité
                 this.vy += 0.25;
                 this.x += this.vx;
                 this.y += this.vy;
-
-                // Friction / résistance de l'air
                 this.vx *= 0.99;
 
-                // Collisions avec les bords du canvas
+                // Collisions bords du canvas
                 if (this.x - this.radius < 0) {
                     this.x = this.radius;
                     this.vx *= -0.5;
@@ -198,34 +238,54 @@
                     this.vx *= -0.5;
                 }
 
+                // Collisions avec les barrières obliques du haut
+                barriers.forEach(b => {
+                    let dx = b.x2 - b.x1;
+                    let dy = b.y2 - b.y1;
+                    let length = Math.sqrt(dx * dx + dy * dy);
+                    let nx = -dy / length;
+                    let ny = dx / length;
+
+                    // Projection simple pour dévier la boule
+                    let cx = this.x - b.x1;
+                    let cy = this.y - b.y1;
+                    let dot = (cx * dx + cy * dy) / (length * length);
+                    
+                    if (dot >= 0 && dot <= 1) {
+                        let lineX = b.x1 + dot * dx;
+                        let lineY = b.y1 + dot * dy;
+                        let dist = Math.sqrt((this.x - lineX) * (this.x - lineX) + (this.y - lineY) * (this.y - lineY));
+                        if (dist < this.radius) {
+                            this.vx += nx * 2;
+                            this.vy += ny * 2;
+                            this.y = lineY + ny * this.radius;
+                        }
+                    }
+                });
+
                 // Collisions avec les picots
                 pegs.forEach(peg => {
                     let dx = this.x - peg.x;
                     let dy = this.y - peg.y;
                     let dist = Math.sqrt(dx * dx + dy * dy);
                     if (dist < this.radius + pegRadius) {
-                        // Rebond et orientation aléatoire (gauche ou droite)
                         let angle = Math.atan2(dy, dx);
                         let speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-                        
-                        // Petit coup de pouce aléatoire vers la gauche ou la droite
                         let randomKick = (Math.random() - 0.5) * 3;
                         this.vx = Math.cos(angle) * speed * 0.5 + randomKick;
                         this.vy = Math.sin(angle) * speed * 0.5;
 
-                        // Éviter de rester collé au picot
                         this.x = peg.x + Math.cos(angle) * (this.radius + pegRadius + 2);
                         this.y = peg.y + Math.sin(angle) * (this.radius + pegRadius + 2);
                     }
                 });
 
-                // Vérification si la boule atteint le fond (les fentes)
+                // Arrivée en bas
                 if (this.y >= canvas.height - 40) {
                     this.active = false;
-                    // Trouver la fente correspondante
                     slots.forEach(slot => {
                         if (this.x >= slot.x && this.x < slot.x + slot.width) {
-                            score += slot.value;
+                            score += slot.value * scoreMultiplier;
                             updateUI();
                         }
                     });
@@ -241,13 +301,11 @@
             }
         }
 
-        // Clic sur le canvas pour lâcher une boule
         canvas.addEventListener('click', (e) => {
             if (ballsCount > 0) {
                 const rect = canvas.getBoundingClientRect();
                 let dropX = e.clientX - rect.left;
-                // S'assurer que la boule tombe dans les limites du mur
-                dropX = Math.max(20, Math.min(canvas.width - 20, dropX));
+                dropX = Math.max(30, Math.min(canvas.width - 30, dropX));
                 
                 balls.push(new Ball(dropX));
                 ballsCount--;
@@ -255,25 +313,64 @@
             }
         });
 
-        function buyBalls() {
-            if (score >= 50) {
-                score -= 50;
-                ballsCount += 3;
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            if (tabName === 'balls') {
+                document.querySelectorAll('.tab-btn')[0].classList.add('active');
+                document.getElementById('tab-balls').classList.add('active');
+            } else {
+                document.querySelectorAll('.tab-btn')[1].classList.add('active');
+                document.getElementById('tab-upgrades').classList.add('active');
+            }
+        }
+
+        function buyBalls(amount, cost) {
+            if (score >= cost) {
+                score -= cost;
+                ballsCount += amount;
                 updateUI();
             } else {
                 alert("Pas assez de points !");
             }
         }
 
+        function buyUpgrade() {
+            let cost = 300;
+            if (score >= cost && scoreMultiplier === 1) {
+                score -= cost;
+                scoreMultiplier = 2;
+                document.getElementById('buyMultiplier').innerText = "Acheté (x2)";
+                document.getElementById('buyMultiplier').disabled = true;
+                updateUI();
+            }
+        }
+
         function updateUI() {
             document.getElementById('scoreDisplay').innerText = score;
             document.getElementById('ballsDisplay').innerText = ballsCount;
-            document.getElementById('buyButton').disabled = score < 50;
+            document.getElementById('buy1Button').disabled = score < 15;
+            document.getElementById('buy20Button').disabled = score < 250;
+            if (scoreMultiplier === 1) {
+                document.getElementById('buyMultiplier').disabled = score < 300;
+            }
         }
 
-        // Boucle principale du jeu
         function animate() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Dessiner les barrières anti-triche du haut
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 4;
+            barriers.forEach(b => {
+                ctx.beginPath();
+                ctx.moveTo(b.x1, b.y1);
+                ctx.lineTo(b.x2, b.y2);
+                ctx.stroke();
+                ctx.closePath();
+            });
+            ctx.lineWidth = 1;
 
             // Dessiner les picots
             ctx.fillStyle = '#94a3b8';
@@ -284,23 +381,21 @@
                 ctx.closePath();
             });
 
-            // Dessiner les fentes du bas
+            // Dessiner les fentes du bas (centre mis en valeur)
             slots.forEach((slot, index) => {
                 ctx.strokeStyle = '#334155';
                 ctx.strokeRect(slot.x, canvas.height - 40, slot.width, 40);
-                ctx.fillStyle = index === 0 || index === slots.length - 1 ? '#eab308' : '#64748b';
+                ctx.fillStyle = (index === 3) ? '#eab308' : '#64748b';
                 ctx.font = 'bold 12px sans-serif';
                 ctx.textAlign = 'center';
                 ctx.fillText(`+${slot.value}`, slot.x + slot.width / 2, canvas.height - 15);
             });
 
-            // Mettre à jour et dessiner les boules
             balls.forEach(ball => {
                 ball.update();
                 ball.draw();
             });
 
-            // Nettoyer les boules inactives pour optimiser
             balls = balls.filter(ball => ball.active);
 
             requestAnimationFrame(animate);
