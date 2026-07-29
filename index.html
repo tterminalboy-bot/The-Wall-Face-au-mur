@@ -254,9 +254,8 @@
 
             <div class="panel">
                 <h2>Récupération</h2>
-                <p class="instructions">Événement Banque (Coût: 20 pts)</p>
-                <button id="recoveryBtn" onclick="tryRecovery()">Tenter Récupération</button>
-                <button onclick="forceTestEventBanque()" style="background: #eab308; color: #0f172a; font-size: 0.75rem; padding: 5px;">⚡ [TEST] Forcer Event Banque</button>
+                <p class="instructions">Bouton de Récupération (1 chance sur 5 d'activer l'Événement Banque)</p>
+                <button id="recoveryBtn" onclick="tryRecovery()">Récupérer / Tenter Event</button>
                 <div id="recoveryResult"></div>
             </div>
         </div>
@@ -329,7 +328,6 @@
         let barriers = [];
         
         let isBanqueActive = false;
-        let banqueWaitingForReset = false;
         let flipAnimationProgress = 0;
         let isFlipping = false;
 
@@ -351,7 +349,7 @@
             }
         }
 
-        // Barrières alignées exactement sur les tout premiers picots des extrémités (50, 110 et 410, 110)
+        // Barrières ancrées précisément sur les tout premiers picots des extrémités (50, 110 et 410, 110)
         function initBarriers() {
             barriers = [
                 { x1: 0, y1: 40, x2: 50, y2: 110 },
@@ -414,7 +412,7 @@
                     this.vx *= -0.5;
                 }
 
-                // Barrières obliques du haut (Anti-glitch robustes)
+                // Barrières obliques du haut (Anti-glitch bidirectionnel renforcé)
                 barriers.forEach(b => {
                     resolveLineCollision(this, b.x1, b.y1, b.x2, b.y2);
                 });
@@ -465,14 +463,25 @@
             }
         }
 
-        // Fonction de collision ligne rigoureuse (anti-glitch/anti-tunneling)
+        // Fonction de collision ligne rigoureuse pour empêcher toute traversée
         function resolveLineCollision(ball, x1, y1, x2, y2) {
             let dx = x2 - x1;
             let dy = y2 - y1;
             let length = Math.sqrt(dx * dx + dy * dy);
             if (length === 0) return;
+            
+            // Normale unitaire pointant vers l'intérieur du jeu
             let nx = -dy / length;
             let ny = dx / length;
+
+            // Correction spécifique selon la barrière (gauche vs droite) pour s'assurer que la normale pointe bien du bon côté
+            if (x1 === 0) { // Barrière gauche
+                // Assure que nx et ny pointent vers la droite/bas
+                if (nx < 0) { nx = -nx; ny = -ny; }
+            } else { // Barrière droite
+                // Assure que nx et ny pointent vers la gauche/bas
+                if (nx > 0) { nx = -nx; ny = -ny; }
+            }
 
             let cx = ball.x - x1;
             let cy = ball.y - y1;
@@ -498,7 +507,7 @@
         }
 
         canvas.addEventListener('click', (e) => {
-            if (ballsCount > 0 && !banqueWaitingForReset && !isFlipping) {
+            if (ballsCount > 0 && !isFlipping) {
                 const rect = canvas.getBoundingClientRect();
                 let dropX = e.clientX - rect.left;
                 dropX = Math.max(30, Math.min(canvas.width - 30, dropX));
@@ -610,68 +619,48 @@
             requestAnimationFrame(animateFlip);
         }
 
+        // Bouton Récupération : 1 chance sur 5 (20%) de déclencher l'événement Banque
         function tryRecovery() {
-            const cost = 20;
             const resDiv = document.getElementById('recoveryResult');
-            if (banqueWaitingForReset || isFlipping) return;
+            if (isFlipping) return;
 
-            if (score < cost) {
-                resDiv.style.color = '#f87171';
-                resDiv.innerText = "Pas assez de points (20 pts requis)";
-                return;
+            let chance = Math.random();
+            if (chance < 0.20) {
+                // Succès : Déclenche l'événement banque
+                startFlipAnimation(() => {
+                    isBanqueActive = true;
+                    initSlots();
+                });
+                resDiv.style.color = '#fbbf24';
+                resDiv.innerText = "🏦 ÉVÉNEMENT BANQUE ACTIVÉ ! Laisse tomber tes boules !";
+            } else {
+                // Échec : Récupération normale des balles ou message
+                resDiv.style.color = '#94a3b8';
+                resDiv.innerText = "🔄 Rien trouvé cette fois (1 chance sur 5). Réessaie !";
             }
-
-            score -= cost;
-            updateUI();
-            triggerBanqueEvent();
-        }
-
-        function forceTestEventBanque() {
-            triggerBanqueEvent();
-        }
-
-        function triggerBanqueEvent() {
-            const resDiv = document.getElementById('recoveryResult');
-            startFlipAnimation(() => {
-                isBanqueActive = true;
-                banqueWaitingForReset = true;
-                initSlots();
-            });
-
-            resDiv.style.color = '#fbbf24';
-            resDiv.innerText = "🏦 ÉVÉNEMENT BANQUE : À toi de lancer tes boules !";
-            ballsCount += 3; // Donne 3 boules test pour l'événement
-            updateUI();
         }
 
         function resolveBanqueResult(type) {
-            // Vérifie si c'était la dernière boule active de l'event
+            const resDiv = document.getElementById('recoveryResult');
+            if (type === 'GAGNÉ') {
+                let reward = 15;
+                ballsCount += reward;
+                resDiv.style.color = '#4ade80';
+                resDiv.innerText = `🎉 GAGNÉ ! +${reward} boules !`;
+            } else {
+                score = Math.max(0, score - 40);
+                resDiv.style.color = '#f87171';
+                resDiv.innerText = `❌ PERDU ! -40 points !`;
+            }
+            
+            // Retour à la normale après l'impact
             setTimeout(() => {
-                let activeBanqueBalls = balls.filter(b => b.active && b.isBanque).length;
-                if (activeBanqueBalls === 0 && banqueWaitingForReset) {
-                    const resDiv = document.getElementById('recoveryResult');
-                    if (type === 'GAGNÉ') {
-                        let reward = 15;
-                        ballsCount += reward;
-                        resDiv.style.color = '#4ade80';
-                        resDiv.innerText = `🎉 GAGNÉ ! +${reward} boules ! (Re-clique pour rejouer)`;
-                    } else {
-                        score = Math.max(0, score - 40);
-                        resDiv.style.color = '#f87171';
-                        resDiv.innerText = `❌ PERDU ! -40 points ! (Re-clique pour rejouer)`;
-                    }
-                    
-                    // Attend un court délai puis réinitialise les fentes normales
-                    setTimeout(() => {
-                        isBanqueActive = false;
-                        banqueWaitingForReset = false;
-                        startFlipAnimation(() => {
-                            initSlots();
-                        });
-                        updateUI();
-                    }, 2000);
-                }
-            }, 500);
+                isBanqueActive = false;
+                startFlipAnimation(() => {
+                    initSlots();
+                });
+                updateUI();
+            }, 1500);
         }
 
         function updateUI() {
@@ -686,12 +675,11 @@
         }
 
         function animate() {
-            // Sous-échantillonnage physique (Sub-stepping x8 pour éliminer tout glitch)
+            // Sous-échantillonnage physique x8 pour une étanchéité parfaite des collisions
             const subSteps = 8;
             for (let s = 0; s < subSteps; s++) {
                 balls.forEach(ball => {
                     if (ball.active) {
-                        // Division par subSteps pour le mouvement fractionnaire
                         ball.vy += 0.25 / subSteps;
                         let substepVx = ball.vx / subSteps;
                         let substepVy = ball.vy / subSteps;
@@ -700,7 +688,7 @@
                         ball.y += substepVy;
                         ball.vx *= Math.pow(0.99, 1/subSteps);
 
-                        // Murs latéraux
+                        // Murs latéraux extérieurs
                         if (ball.x - ball.radius < 0) {
                             ball.x = ball.radius;
                             ball.vx *= -0.5;
@@ -732,7 +720,7 @@
                             }
                         });
 
-                        // Arrivée fentes du bas
+                        // Arrivée en bas
                         if (ball.y >= canvas.height - 40) {
                             ball.active = false;
                             slots.forEach(slot => {
