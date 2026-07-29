@@ -309,7 +309,6 @@
             }
         }
 
-        // Barrières obliques connectées exactement au premier picot (50, 110) et (410, 110)
         function initBarriers() {
             barriers = [
                 { x1: 0, y1: 40, x2: 50, y2: 110 },
@@ -361,7 +360,6 @@
                 this.y += this.vy;
                 this.vx *= 0.99;
 
-                // Collisions bords du canvas
                 if (this.x - this.radius < 0) {
                     this.x = this.radius;
                     this.vx *= -0.5;
@@ -371,12 +369,10 @@
                     this.vx *= -0.5;
                 }
 
-                // Collisions robustes avec les barrières du haut
                 barriers.forEach(b => {
                     checkLineCollision(this, b.x1, b.y1, b.x2, b.y2);
                 });
 
-                // Collisions avec les picots
                 pegs.forEach(peg => {
                     let dx = this.x - peg.x;
                     let dy = this.y - peg.y;
@@ -393,7 +389,6 @@
                     }
                 });
 
-                // Arrivée en bas
                 if (this.y >= canvas.height - 40) {
                     this.active = false;
                     slots.forEach(slot => {
@@ -418,8 +413,7 @@
             }
         }
 
-        // Fonction de collision ligne-cercle anti-glitch
-        function-checkLineCollision = function(ball, x1, y1, x2, y2) {
+        function checkLineCollision(ball, x1, y1, x2, y2) {
             let dx = x2 - x1;
             let dy = y2 - y1;
             let length = Math.sqrt(dx * dx + dy * dy);
@@ -447,7 +441,7 @@
                     ball.y = projY + ny * ball.radius;
                 }
             }
-        };
+        }
 
         canvas.addEventListener('click', (e) => {
             if (ballsCount > 0 && !isBanqueActive) {
@@ -520,7 +514,6 @@
             }
         }
 
-        // Événement Banque (actif seulement si ballsCount === 0)
         function tryRecovery() {
             const cost = 20;
             const resDiv = document.getElementById('recoveryResult');
@@ -535,12 +528,10 @@
             score -= cost;
             updateUI();
 
-            // Lancement de l'événement Banque
             isBanqueActive = true;
             resDiv.style.color = '#fbbf24';
             resDiv.innerText = "🏦 ÉVÉNEMENT BANQUE EN COURS... Lâcher de boule spéciale !";
 
-            // Lâcher automatique d'une boule dorée au centre
             balls.push(new Ball(225, true));
         }
 
@@ -578,7 +569,6 @@
         function animate() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Dessiner les barrières anti-triche
             ctx.strokeStyle = '#475569';
             ctx.lineWidth = 4;
             barriers.forEach(b => {
@@ -590,7 +580,6 @@
             });
             ctx.lineWidth = 1;
 
-            // Dessiner les picots
             ctx.fillStyle = '#94a3b8';
             pegs.forEach(peg => {
                 ctx.beginPath();
@@ -599,7 +588,6 @@
                 ctx.closePath();
             });
 
-            // Dessiner les fentes du bas (normales ou mode Banque)
             slots.forEach((slot, index) => {
                 ctx.strokeStyle = '#334155';
                 ctx.strokeRect(slot.x, canvas.height - 40, slot.width, 40);
