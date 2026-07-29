@@ -38,7 +38,7 @@
             display: flex;
             flex-direction: column;
             gap: 15px;
-            width: 250px;
+            width: 260px;
         }
         .panel {
             background: #334155;
@@ -81,7 +81,8 @@
             transform: scale(0.97);
         }
         button:disabled {
-            background: #64748b;
+            background: #475569;
+            color: #94a3b8;
             cursor: not-allowed;
             transform: none;
         }
@@ -91,7 +92,7 @@
             line-height: 1.4;
         }
 
-        /* Styles de la Modale Boutique */
+        /* Modale Boutique */
         .modal {
             display: none;
             position: fixed;
@@ -108,7 +109,7 @@
             background: #1e293b;
             padding: 25px;
             border-radius: 12px;
-            width: 380px;
+            width: 420px;
             box-shadow: 0 15px 35px rgba(0,0,0,0.5);
             position: relative;
             border: 1px solid #475569;
@@ -142,20 +143,23 @@
         }
         .modal-tab-content {
             display: none;
+            gap: 10px;
         }
         .modal-tab-content.active {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
         }
         .shop-card {
             background: #334155;
-            padding: 12px;
+            padding: 10px;
             border-radius: 10px;
-            text-align: center;
+            display: flex;
+            align-items: center;
+            gap: 10px;
             cursor: pointer;
             transition: background 0.2s, transform 0.1s;
             border: 1px solid #475569;
+            text-align: left;
         }
         .shop-card:hover {
             background: #475569;
@@ -164,21 +168,26 @@
         .shop-card:active {
             transform: scale(0.98);
         }
-        .shop-card h3 {
-            margin: 0 0 5px 0;
-            font-size: 1rem;
+        .shop-icon {
+            font-size: 1.8rem;
+            min-width: 40px;
+            text-align: center;
+        }
+        .shop-info h3 {
+            margin: 0 0 2px 0;
+            font-size: 0.9rem;
             color: #38bdf8;
         }
-        .shop-card p {
+        .shop-info p {
             margin: 0;
-            font-size: 0.85rem;
+            font-size: 0.75rem;
             color: #cbd5e1;
         }
         #recoveryResult {
             margin-top: 8px;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             font-weight: bold;
-            min-height: 20px;
+            min-height: 25px;
         }
     </style>
 </head>
@@ -208,8 +217,8 @@
 
             <div class="panel">
                 <h2>Récupération</h2>
-                <p class="instructions">Tente l'event Banque pour récupérer des boules ! (Coût: 20 pts)</p>
-                <button onclick="tryRecovery()">Tenter (20 pts)</button>
+                <p class="instructions">Disponible uniquement à 0 boules ! (Coût: 20 pts)</p>
+                <button id="recoveryBtn" onclick="tryRecovery()" disabled>Événement Banque (20 pts)</button>
                 <div id="recoveryResult"></div>
             </div>
         </div>
@@ -218,32 +227,51 @@
     <div id="shopModal" class="modal">
         <div class="modal-content">
             <span class="close-btn" onclick="closeShop()">&times;</span>
-            <h2 style="margin-top:0; color:#38bdf8;">Boutique du Mur</h2>
+            <h2 style="margin-top:0; color:#38bdf8; text-align:center;">Boutique du Mur</h2>
             
             <div class="modal-tabs">
                 <button class="modal-tab-btn active" onclick="switchModalTab('balls')">Packs de Boules</button>
                 <button class="modal-tab-btn" onclick="switchModalTab('upgrades')">Amélioration Mur</button>
             </div>
 
-            <div id="modal-tab-balls" class="modal-tab-content active">
+            <div id="modal-tab-balls" class="modal-tab-content active" style="grid-template-columns: 1fr 1fr;">
                 <div class="shop-card" onclick="buyBalls(1, 15)">
-                    <h3>1 Boule</h3>
-                    <p>Coût : 15 points</p>
+                    <div class="shop-icon">🔴</div>
+                    <div class="shop-info">
+                        <h3>1 Boule</h3>
+                        <p>15 pts</p>
+                    </div>
                 </div>
                 <div class="shop-card" onclick="buyBalls(5, 70)">
-                    <h3>Pack de 5 Boules</h3>
-                    <p>Coût : 70 points</p>
+                    <div class="shop-icon">🟡🟡</div>
+                    <div class="shop-info">
+                        <h3>Pack 5</h3>
+                        <p>70 pts</p>
+                    </div>
                 </div>
-                <div class="shop-card" onclick="buyBalls(20, 250)">
-                    <h3>Pack de 20 Boules</h3>
-                    <p>Coût : 250 points</p>
+                <div class="shop-card" onclick="buyBalls(15, 190)">
+                    <div class="shop-icon">🟢🟢🟢</div>
+                    <div class="shop-info">
+                        <h3>Pack 15</h3>
+                        <p>190 pts</p>
+                    </div>
+                </div>
+                <div class="shop-card" onclick="buyBalls(30, 350)">
+                    <div class="shop-icon">🔵🔵🔵🔵</div>
+                    <div class="shop-info">
+                        <h3>Pack 30</h3>
+                        <p>350 pts</p>
+                    </div>
                 </div>
             </div>
 
-            <div id="modal-tab-upgrades" class="modal-tab-content">
-                <div class="shop-card" onclick="buyWallUpgrade()" id="upgradeCard">
-                    <h3 id="upgradeTitle">Amélioration Palier 1</h3>
-                    <p id="upgradeDesc">Augmente les gains du mur (Coût : 200 pts)</p>
+            <div id="modal-tab-upgrades" class="modal-tab-content" style="grid-template-columns: 1fr;">
+                <div class="shop-card" onclick="buyWallUpgrade()" style="justify-content: flex-start;">
+                    <div class="shop-icon">🧱</div>
+                    <div class="shop-info">
+                        <h3 id="upgradeTitle">Amélioration Palier 1</h3>
+                        <p id="upgradeDesc">Augmente les gains du mur (Coût : 200 pts)</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -255,11 +283,13 @@
 
         let score = 0;
         let ballsCount = 10;
-        let wallTier = 0; // 0, 1, 2, 3
+        let wallTier = 0; 
         let balls = [];
         let pegs = [];
         let slots = [];
         let barriers = [];
+        
+        let isBanqueActive = false;
 
         const rows = 8;
         const cols = 9;
@@ -279,21 +309,19 @@
             }
         }
 
-        // Barrières anti-triche reliées exactement aux tout premiers picots de la première ligne
+        // Barrières obliques connectées exactement au premier picot (50, 110) et (410, 110)
         function initBarriers() {
-            // Premier picot de row 0 est à (50, 110), dernier picot de row 0 est à (410, 110)
             barriers = [
                 { x1: 0, y1: 40, x2: 50, y2: 110 },
                 { x1: 450, y1: 40, x2: 410, y2: 110 }
             ];
         }
 
-        // Paliers de scores du mur progressifs
         const tiers = [
             { name: "Palier 1", cost: 200, values: [5, 10, 20, 100, 20, 10, 5] },
             { name: "Palier 2", cost: 500, values: [10, 25, 50, 250, 50, 25, 10] },
             { name: "Palier 3", cost: 1200, values: [25, 50, 100, 500, 100, 50, 25] },
-            { name: "Maximum atteint", cost: 0, values: [50, 100, 200, 1000, 200, 100, 50] }
+            { name: "Maximum", cost: 0, values: [50, 100, 200, 1000, 200, 100, 50] }
         ];
 
         function initSlots() {
@@ -304,7 +332,8 @@
                 slots.push({
                     x: i * slotWidth,
                     width: slotWidth,
-                    value: currentValues[i]
+                    value: currentValues[i],
+                    banqueType: (i % 2 === 0) ? 'PERDU' : 'GAGNÉ'
                 });
             }
         }
@@ -314,13 +343,14 @@
         initSlots();
 
         class Ball {
-            constructor(x) {
+            constructor(x, isBanque = false) {
                 this.x = x;
                 this.y = 20;
                 this.vx = (Math.random() - 0.5) * 2;
                 this.vy = 0;
                 this.radius = 8;
                 this.active = true;
+                this.isBanque = isBanque;
             }
 
             update() {
@@ -341,33 +371,9 @@
                     this.vx *= -0.5;
                 }
 
-                // Collisions avec les barrières obliques du haut
+                // Collisions robustes avec les barrières du haut
                 barriers.forEach(b => {
-                    let dx = b.x2 - b.x1;
-                    let dy = b.y2 - b.y1;
-                    let length = Math.sqrt(dx * dx + dy * dy);
-                    let nx = -dy / length;
-                    let ny = dx / length;
-
-                    let cx = this.x - b.x1;
-                    let cy = this.y - b.y1;
-                    let dot = (cx * dx + cy * dy) / (length * length);
-                    
-                    if (dot >= 0 && dot <= 1) {
-                        let lineX = b.x1 + dot * dx;
-                        let lineY = b.y1 + dot * dy;
-                        let dist = Math.sqrt((this.x - lineX) * (this.x - lineX) + (this.y - lineY) * (this.y - lineY));
-                        if (dist < this.radius) {
-                            let dotProd = this.vx * nx + this.vy * ny;
-                            if (dotProd < 0) {
-                                this.vx -= 2 * dotProd * nx;
-                                this.vy -= 2 * dotProd * ny;
-                                this.vx += (Math.random() - 0.5) * 3;
-                            }
-                            this.x = lineX + nx * this.radius;
-                            this.y = lineY + ny * this.radius;
-                        }
-                    }
+                    checkLineCollision(this, b.x1, b.y1, b.x2, b.y2);
                 });
 
                 // Collisions avec les picots
@@ -392,7 +398,11 @@
                     this.active = false;
                     slots.forEach(slot => {
                         if (this.x >= slot.x && this.x < slot.x + slot.width) {
-                            score += slot.value;
+                            if (isBanqueActive) {
+                                resolveBanqueResult(slot.banqueType);
+                            } else {
+                                score += slot.value;
+                            }
                             updateUI();
                         }
                     });
@@ -402,14 +412,45 @@
             draw() {
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fillStyle = '#f43f5e';
+                ctx.fillStyle = this.isBanque ? '#fbbf24' : '#f43f5e';
                 ctx.fill();
                 ctx.closePath();
             }
         }
 
+        // Fonction de collision ligne-cercle anti-glitch
+        function-checkLineCollision = function(ball, x1, y1, x2, y2) {
+            let dx = x2 - x1;
+            let dy = y2 - y1;
+            let length = Math.sqrt(dx * dx + dy * dy);
+            let nx = -dy / length;
+            let ny = dx / length;
+
+            let cx = ball.x - x1;
+            let cy = ball.y - y1;
+            let dot = (cx * dx + cy * dy) / (length * length);
+            
+            if (dot >= 0 && dot <= 1) {
+                let projX = x1 + dot * dx;
+                let projY = y1 + dot * dy;
+                let dist = Math.sqrt((ball.x - projX) * (ball.x - projX) + (ball.y - projY) * (ball.y - projY));
+                if (dist < ball.radius) {
+                    let vDotN = ball.vx * nx + ball.vy * ny;
+                    if (vDotN < 0) {
+                        ball.vx -= 2 * vDotN * nx;
+                        ball.vy -= 2 * vDotN * ny;
+                        ball.vx *= 0.7;
+                        ball.vy *= 0.7;
+                        ball.vx += (Math.random() - 0.5) * 3;
+                    }
+                    ball.x = projX + nx * ball.radius;
+                    ball.y = projY + ny * ball.radius;
+                }
+            }
+        };
+
         canvas.addEventListener('click', (e) => {
-            if (ballsCount > 0) {
+            if (ballsCount > 0 && !isBanqueActive) {
                 const rect = canvas.getBoundingClientRect();
                 let dropX = e.clientX - rect.left;
                 dropX = Math.max(30, Math.min(canvas.width - 30, dropX));
@@ -420,7 +461,6 @@
             }
         });
 
-        // Gestion de la modale Boutique
         function openShop() {
             document.getElementById('shopModal').style.display = 'flex';
             updateUpgradeUI();
@@ -457,11 +497,11 @@
             let desc = document.getElementById('upgradeDesc');
             let title = document.getElementById('upgradeTitle');
             if (wallTier < tiers.length - 1) {
-                title.innerText = `Amélioration vers ${tiers[wallTier + 1].name}`;
+                title.innerText = `Amélioration ${tiers[wallTier + 1].name}`;
                 desc.innerText = `Coût : ${tiers[wallTier].cost} pts`;
             } else {
-                title.innerText = "Mur Max";
-                desc.innerText = "Le mur est au niveau maximum !";
+                title.innerText = "Mur Maximum";
+                desc.innerText = "Le mur est au top niveau !";
             }
         }
 
@@ -475,15 +515,17 @@
                     updateUI();
                     updateUpgradeUI();
                 } else {
-                    alert("Pas assez de points pour améliorer le mur !");
+                    alert("Pas assez de points !");
                 }
             }
         }
 
-        // Système de Récupération (Event Banque 1 chance sur 3)
+        // Événement Banque (actif seulement si ballsCount === 0)
         function tryRecovery() {
             const cost = 20;
             const resDiv = document.getElementById('recoveryResult');
+            if (ballsCount > 0) return;
+
             if (score < cost) {
                 resDiv.style.color = '#f87171';
                 resDiv.innerText = "Pas assez de points (20 pts requis)";
@@ -493,35 +535,50 @@
             score -= cost;
             updateUI();
 
-            // 1 chance sur 3 de déclencher l'Event Banque
-            let eventChance = Math.floor(Math.random() * 3);
-            if (eventChance === 0) {
-                // Event Banque (50/50 entre "Je te sauve" et "Tu la perds")
-                let fiftyFifty = Math.random() < 0.5;
-                if (fiftyFifty) {
-                    let recovered = Math.floor(Math.random() * 3) + 2; // 2 à 4 boules sauvées
-                    ballsCount += recovered;
-                    resDiv.style.color = '#4ade80';
-                    resDiv.innerText = `🏦 EVENT BANQUE : "Je te sauve" ! +${recovered} boules !`;
-                } else {
-                    resDiv.style.color = '#f87171';
-                    resDiv.innerText = `🏦 EVENT BANQUE : "Tu la perds" ! Rien de sauvé.`;
-                }
+            // Lancement de l'événement Banque
+            isBanqueActive = true;
+            resDiv.style.color = '#fbbf24';
+            resDiv.innerText = "🏦 ÉVÉNEMENT BANQUE EN COURS... Lâcher de boule spéciale !";
+
+            // Lâcher automatique d'une boule dorée au centre
+            balls.push(new Ball(225, true));
+        }
+
+        function resolveBanqueResult(type) {
+            const resDiv = document.getElementById('recoveryResult');
+            if (type === 'GAGNÉ') {
+                let reward = 15;
+                ballsCount += reward;
+                resDiv.style.color = '#4ade80';
+                resDiv.innerText = `🎉 GAGNÉ ! La banque te reverse +${reward} boules !`;
             } else {
-                resDiv.style.color = '#94a3b8';
-                resDiv.innerText = "Rien trouvé dans la machine... Réessaie !";
+                score = Math.max(0, score - 50);
+                resDiv.style.color = '#f87171';
+                resDiv.innerText = `❌ PERDU ! La banque récupère 50 points !`;
             }
+            isBanqueActive = false;
+            initSlots();
+            updateUI();
         }
 
         function updateUI() {
             document.getElementById('scoreDisplay').innerText = score;
             document.getElementById('ballsDisplay').innerText = ballsCount;
+            
+            let recoveryBtn = document.getElementById('recoveryBtn');
+            if (ballsCount === 0) {
+                recoveryBtn.disabled = false;
+                recoveryBtn.innerText = "Lancer l'Événement Banque (20 pts)";
+            } else {
+                recoveryBtn.disabled = true;
+                recoveryBtn.innerText = `Bloqué (${ballsCount} boule${ballsCount > 1 ? 's' : ''} restante${ballsCount > 1 ? 's' : ''})`;
+            }
         }
 
         function animate() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Dessiner les barrières de déviation du haut
+            // Dessiner les barrières anti-triche
             ctx.strokeStyle = '#475569';
             ctx.lineWidth = 4;
             barriers.forEach(b => {
@@ -542,14 +599,24 @@
                 ctx.closePath();
             });
 
-            // Dessiner les fentes du bas (centre mis en valeur en jaune)
+            // Dessiner les fentes du bas (normales ou mode Banque)
             slots.forEach((slot, index) => {
                 ctx.strokeStyle = '#334155';
                 ctx.strokeRect(slot.x, canvas.height - 40, slot.width, 40);
-                ctx.fillStyle = (index === 3) ? '#eab308' : '#64748b';
-                ctx.font = 'bold 12px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText(`+${slot.value}`, slot.x + slot.width / 2, canvas.height - 15);
+                
+                if (isBanqueActive) {
+                    ctx.fillStyle = slot.banqueType === 'GAGNÉ' ? '#16a34a' : '#dc2626';
+                    ctx.fillRect(slot.x + 1, canvas.height - 39, slot.width - 2, 38);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 11px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(slot.banqueType, slot.x + slot.width / 2, canvas.height - 15);
+                } else {
+                    ctx.fillStyle = (index === 3) ? '#eab308' : '#64748b';
+                    ctx.font = 'bold 12px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`+${slot.value}`, slot.x + slot.width / 2, canvas.height - 15);
+                }
             });
 
             balls.forEach(ball => {
