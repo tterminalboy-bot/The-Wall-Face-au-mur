@@ -157,7 +157,7 @@
             align-items: center;
             gap: 10px;
             cursor: pointer;
-            transition: background 0.2s, transform 0.1s;
+            transition: background 0.2s, transform 0.1s, opacity 0.2s;
             border: 1px solid #475569;
             text-align: left;
         }
@@ -167,6 +167,12 @@
         }
         .shop-card:active {
             transform: scale(0.98);
+        }
+        .shop-card.disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+            filter: grayscale(100%);
+            transform: none !important;
         }
         .shop-icon {
             font-size: 1.8rem;
@@ -235,29 +241,29 @@
             </div>
 
             <div id="modal-tab-balls" class="modal-tab-content active" style="grid-template-columns: 1fr 1fr;">
-                <div class="shop-card" onclick="buyBalls(1, 15)">
+                <div class="shop-card" id="card-ball-1" onclick="buyBalls(1, 15)">
                     <div class="shop-icon">🔴</div>
                     <div class="shop-info">
                         <h3>1 Boule</h3>
                         <p>15 pts</p>
                     </div>
                 </div>
-                <div class="shop-card" onclick="buyBalls(5, 70)">
+                <div class="shop-card" id="card-ball-5" onclick="buyBalls(5, 70)">
                     <div class="shop-icon">🟡🟡</div>
                     <div class="shop-info">
                         <h3>Pack 5</h3>
                         <p>70 pts</p>
                     </div>
                 </div>
-                <div class="shop-card" onclick="buyBalls(15, 190)">
+                <div class="shop-card" id="card-ball-15" onclick="buyBalls(15, 190)">
                     <div class="shop-icon">🟢🟢🟢</div>
                     <div class="shop-info">
                         <h3>Pack 15</h3>
                         <p>190 pts</p>
                     </div>
                 </div>
-                <div class="shop-card" onclick="buyBalls(30, 350)">
-                    <div class="shop-icon">🔵🔵🔵🔵</div>
+                <div class="shop-card" id="card-ball-30" onclick="buyBalls(30, 350)">
+                    <div class="shop-icon">🎁🔴</div>
                     <div class="shop-info">
                         <h3>Pack 30</h3>
                         <p>350 pts</p>
@@ -266,7 +272,7 @@
             </div>
 
             <div id="modal-tab-upgrades" class="modal-tab-content" style="grid-template-columns: 1fr;">
-                <div class="shop-card" onclick="buyWallUpgrade()" style="justify-content: flex-start;">
+                <div class="shop-card" id="card-upgrade" onclick="buyWallUpgrade()" style="justify-content: flex-start;">
                     <div class="shop-icon">🧱</div>
                     <div class="shop-info">
                         <h3 id="upgradeTitle">Amélioration Palier 1</h3>
@@ -290,6 +296,8 @@
         let barriers = [];
         
         let isBanqueActive = false;
+        let flipAnimationProgress = 0; // 0 à 1 pour l'animation de rotation verticale des cases
+        let isFlipping = false;
 
         const rows = 8;
         const cols = 9;
@@ -309,10 +317,11 @@
             }
         }
 
+        // Barrières symétriques et étanches (Gauche: 0->50, Droite: 450->400)
         function initBarriers() {
             barriers = [
                 { x1: 0, y1: 40, x2: 50, y2: 110 },
-                { x1: 450, y1: 40, x2: 410, y2: 110 }
+                { x1: 450, y1: 40, x2: 400, y2: 110 }
             ];
         }
 
@@ -332,7 +341,8 @@
                     x: i * slotWidth,
                     width: slotWidth,
                     value: currentValues[i],
-                    banqueType: (i % 2 === 0) ? 'PERDU' : 'GAGNÉ'
+                    banqueType: (i % 2 === 0) ? 'PERDU' : 'GAGNÉ',
+                    delayIndex: i // pour le délai de bascule
                 });
             }
         }
@@ -444,7 +454,7 @@
         }
 
         canvas.addEventListener('click', (e) => {
-            if (ballsCount > 0 && !isBanqueActive) {
+            if (ballsCount > 0 && !isBanqueActive && !isFlipping) {
                 const rect = canvas.getBoundingClientRect();
                 let dropX = e.clientX - rect.left;
                 dropX = Math.max(30, Math.min(canvas.width - 30, dropX));
@@ -458,6 +468,7 @@
         function openShop() {
             document.getElementById('shopModal').style.display = 'flex';
             updateUpgradeUI();
+            updateShopUI();
         }
 
         function closeShop() {
@@ -482,42 +493,84 @@
                 score -= cost;
                 ballsCount += amount;
                 updateUI();
-            } else {
-                alert("Pas assez de points !");
+                updateShopUI();
             }
         }
 
         function updateUpgradeUI() {
             let desc = document.getElementById('upgradeDesc');
             let title = document.getElementById('upgradeTitle');
+            let card = document.getElementById('card-upgrade');
             if (wallTier < tiers.length - 1) {
+                let cost = tiers[wallTier].cost;
                 title.innerText = `Amélioration ${tiers[wallTier + 1].name}`;
-                desc.innerText = `Coût : ${tiers[wallTier].cost} pts`;
+                desc.innerText = `Coût : ${cost} pts`;
+                if (score < cost) {
+                    card.classList.add('disabled');
+                } else {
+                    card.classList.remove('disabled');
+                }
             } else {
                 title.innerText = "Mur Maximum";
                 desc.innerText = "Le mur est au top niveau !";
+                card.classList.add('disabled');
             }
+        }
+
+        function updateShopUI() {
+            const items = [
+                { id: 'card-ball-1', cost: 15 },
+                { id: 'card-ball-5', cost: 70 },
+                { id: 'card-ball-15', cost: 190 },
+                { id: 'card-ball-30', cost: 350 }
+            ];
+            items.forEach(item => {
+                let el = document.getElementById(item.id);
+                if (score < item.cost) {
+                    el.classList.add('disabled');
+                } else {
+                    el.classList.remove('disabled');
+                }
+            });
+            updateUpgradeUI();
         }
 
         function buyWallUpgrade() {
             if (wallTier < tiers.length - 1) {
                 let cost = tiers[wallTier].cost;
-                if (score >= cost) {
+                if (score >= cost && !isFlipping) {
                     score -= cost;
                     wallTier++;
-                    initSlots();
+                    startFlipAnimation(() => {
+                        initSlots();
+                    });
                     updateUI();
-                    updateUpgradeUI();
-                } else {
-                    alert("Pas assez de points !");
+                    updateShopUI();
                 }
             }
         }
 
+        function startFlipAnimation(callback) {
+            isFlipping = true;
+            flipAnimationProgress = 0;
+            let animateFlip = () => {
+                flipAnimationProgress += 0.04;
+                if (flipAnimationProgress >= 1) {
+                    flipAnimationProgress = 1;
+                    if (callback) callback();
+                    isFlipping = false;
+                } else {
+                    requestAnimationFrame(animateFlip);
+                }
+            };
+            requestAnimationFrame(animateFlip);
+        }
+
+        // Lancement de l'événement Banque avec une vague de plusieurs boules
         function tryRecovery() {
             const cost = 20;
             const resDiv = document.getElementById('recoveryResult');
-            if (ballsCount > 0) return;
+            if (ballsCount > 0 || isFlipping) return;
 
             if (score < cost) {
                 resDiv.style.color = '#f87171';
@@ -528,27 +581,40 @@
             score -= cost;
             updateUI();
 
-            isBanqueActive = true;
-            resDiv.style.color = '#fbbf24';
-            resDiv.innerText = "🏦 ÉVÉNEMENT BANQUE EN COURS... Lâcher de boule spéciale !";
+            startFlipAnimation(() => {
+                isBanqueActive = true;
+                initSlots();
+            });
 
-            balls.push(new Ball(225, true));
+            resDiv.style.color = '#fbbf24';
+            resDiv.innerText = "🏦 ÉVÉNEMENT BANQUE : Vague de boules spéciales !";
+
+            // Lâcher une vague de 3 boules dorées espacées dans le temps
+            for (let i = 0; i < 3; i++) {
+                setTimeout(() => {
+                    if (isBanqueActive) {
+                        balls.push(new Ball(200 + i * 25, true));
+                    }
+                }, i * 600);
+            }
         }
 
         function resolveBanqueResult(type) {
             const resDiv = document.getElementById('recoveryResult');
             if (type === 'GAGNÉ') {
-                let reward = 15;
+                let reward = 10;
                 ballsCount += reward;
                 resDiv.style.color = '#4ade80';
                 resDiv.innerText = `🎉 GAGNÉ ! La banque te reverse +${reward} boules !`;
             } else {
-                score = Math.max(0, score - 50);
+                score = Math.max(0, score - 30);
                 resDiv.style.color = '#f87171';
-                resDiv.innerText = `❌ PERDU ! La banque récupère 50 points !`;
+                resDiv.innerText = `❌ PERDU ! La banque récupère 30 points !`;
             }
             isBanqueActive = false;
-            initSlots();
+            startFlipAnimation(() => {
+                initSlots();
+            });
             updateUI();
         }
 
@@ -569,6 +635,7 @@
         function animate() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+            // Barrières anti-triche
             ctx.strokeStyle = '#475569';
             ctx.lineWidth = 4;
             barriers.forEach(b => {
@@ -580,6 +647,7 @@
             });
             ctx.lineWidth = 1;
 
+            // Picots
             ctx.fillStyle = '#94a3b8';
             pegs.forEach(peg => {
                 ctx.beginPath();
@@ -588,15 +656,38 @@
                 ctx.closePath();
             });
 
+            // Fentes du bas avec effet de rotation verticale (animation flip)
             slots.forEach((slot, index) => {
+                ctx.save();
+                let centerX = slot.x + slot.width / 2;
+                let centerY = canvas.height - 20;
+
+                // Calcul de la mise à l'échelle verticale pour l'effet de rotation 3D (bascule verticale)
+                let scaleY = 1;
+                let displayContent = true;
+
+                if (isFlipping) {
+                    // Chaque case a un léger décalage (délai) basé sur son index
+                    let delayOffset = index * 0.08;
+                    let localProgress = Math.max(0, Math.min(1, (flipAnimationProgress - delayOffset) * 2));
+                    scaleY = Math.cos(localProgress * Math.PI);
+                    if (localProgress > 0.5) {
+                        displayContent = true; // à la moitié de la rotation, le contenu change/apparaît
+                    }
+                }
+
+                ctx.translate(centerX, centerY);
+                ctx.scale(1, scaleY);
+                ctx.translate(-centerX, -centerY);
+
                 ctx.strokeStyle = '#334155';
                 ctx.strokeRect(slot.x, canvas.height - 40, slot.width, 40);
-                
+
                 if (isBanqueActive) {
                     ctx.fillStyle = slot.banqueType === 'GAGNÉ' ? '#16a34a' : '#dc2626';
                     ctx.fillRect(slot.x + 1, canvas.height - 39, slot.width - 2, 38);
                     ctx.fillStyle = '#ffffff';
-                    ctx.font = 'bold 11px sans-serif';
+                    ctx.font = 'bold 10px sans-serif';
                     ctx.textAlign = 'center';
                     ctx.fillText(slot.banqueType, slot.x + slot.width / 2, canvas.height - 15);
                 } else {
@@ -605,6 +696,8 @@
                     ctx.textAlign = 'center';
                     ctx.fillText(`+${slot.value}`, slot.x + slot.width / 2, canvas.height - 15);
                 }
+
+                ctx.restore();
             });
 
             balls.forEach(ball => {
