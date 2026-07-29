@@ -324,8 +324,8 @@
         let wallTier = 0; 
         let balls = [];
         let pegs = [];
+        let barrierPegs = [];
         let slots = [];
-        let barriers = [];
         
         let isBanqueActive = false;
         let flipAnimationProgress = 0;
@@ -349,12 +349,28 @@
             }
         }
 
-        // Barrières ancrées précisément sur les tout premiers picots des extrémités (50, 110 et 410, 110)
+        // Barrières physiques formées de mini-cercles jointifs (collision identique aux picots, 100% sans glitch)
         function initBarriers() {
-            barriers = [
-                { x1: 0, y1: 40, x2: 50, y2: 110 },
-                { x1: 450, y1: 40, x2: 410, y2: 110 }
-            ];
+            barrierPegs = [];
+            let steps = 7;
+            // Barrette gauche (de (0, 40) à (50, 110))
+            for (let i = 0; i <= steps; i++) {
+                let t = i / steps;
+                barrierPegs.push({
+                    x: 0 + t * 50,
+                    y: 40 + t * 70,
+                    radius: 7
+                });
+            }
+            // Barrette droite (de (450, 40) à (410, 110))
+            for (let i = 0; i <= steps; i++) {
+                let t = i / steps;
+                barrierPegs.push({
+                    x: 450 - t * 40,
+                    y: 40 + t * 70,
+                    radius: 7
+                });
+            }
         }
 
         const tiers = [
@@ -412,12 +428,24 @@
                     this.vx *= -0.5;
                 }
 
-                // Barrières obliques du haut (Anti-glitch bidirectionnel renforcé)
-                barriers.forEach(b => {
-                    resolveLineCollision(this, b.x1, b.y1, b.x2, b.y2);
+                // Collisions avec les barrières obliques (traitées comme des picots solides)
+                barrierPegs.forEach(bp => {
+                    let dx = this.x - bp.x;
+                    let dy = this.y - bp.y;
+                    let dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < this.radius + bp.radius) {
+                        let angle = Math.atan2(dy, dx);
+                        let speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+                        let randomKick = (Math.random() - 0.5) * 2;
+                        this.vx = Math.cos(angle) * speed * 0.6 + randomKick;
+                        this.vy = Math.sin(angle) * speed * 0.6;
+
+                        this.x = bp.x + Math.cos(angle) * (this.radius + bp.radius + 2);
+                        this.y = bp.y + Math.sin(angle) * (this.radius + bp.radius + 2);
+                    }
                 });
 
-                // Picots
+                // Collisions avec les picots du mur
                 pegs.forEach(peg => {
                     let dx = this.x - peg.x;
                     let dy = this.y - peg.y;
@@ -460,49 +488,6 @@
                 ctx.fillStyle = this.isBanque ? '#fbbf24' : '#f43f5e';
                 ctx.fill();
                 ctx.closePath();
-            }
-        }
-
-        // Fonction de collision ligne rigoureuse pour empêcher toute traversée
-        function resolveLineCollision(ball, x1, y1, x2, y2) {
-            let dx = x2 - x1;
-            let dy = y2 - y1;
-            let length = Math.sqrt(dx * dx + dy * dy);
-            if (length === 0) return;
-            
-            // Normale unitaire pointant vers l'intérieur du jeu
-            let nx = -dy / length;
-            let ny = dx / length;
-
-            // Correction spécifique selon la barrière (gauche vs droite) pour s'assurer que la normale pointe bien du bon côté
-            if (x1 === 0) { // Barrière gauche
-                // Assure que nx et ny pointent vers la droite/bas
-                if (nx < 0) { nx = -nx; ny = -ny; }
-            } else { // Barrière droite
-                // Assure que nx et ny pointent vers la gauche/bas
-                if (nx > 0) { nx = -nx; ny = -ny; }
-            }
-
-            let cx = ball.x - x1;
-            let cy = ball.y - y1;
-            let dot = (cx * dx + cy * dy) / (length * length);
-            
-            if (dot >= 0 && dot <= 1) {
-                let projX = x1 + dot * dx;
-                let projY = y1 + dot * dy;
-                let dist = Math.sqrt((ball.x - projX) * (ball.x - projX) + (ball.y - projY) * (ball.y - projY));
-                if (dist < ball.radius) {
-                    let vDotN = ball.vx * nx + ball.vy * ny;
-                    if (vDotN < 0) {
-                        ball.vx -= 2 * vDotN * nx;
-                        ball.vy -= 2 * vDotN * ny;
-                        ball.vx *= 0.7;
-                        ball.vy *= 0.7;
-                        ball.vx += (Math.random() - 0.5) * 2;
-                    }
-                    ball.x = projX + nx * (ball.radius + 1);
-                    ball.y = projY + ny * (ball.radius + 1);
-                }
             }
         }
 
@@ -626,15 +611,13 @@
 
             let chance = Math.random();
             if (chance < 0.20) {
-                // Succès : Déclenche l'événement banque
                 startFlipAnimation(() => {
                     isBanqueActive = true;
                     initSlots();
                 });
                 resDiv.style.color = '#fbbf24';
-                resDiv.innerText = "🏦 ÉVÉNEMENT BANQUE ACTIVÉ ! Laisse tomber tes boules !";
+                resDiv.innerText = "🏦 ÉVÉNEMENT BANQUE ACTIVÉ ! À toi de lancer tes boules !";
             } else {
-                // Échec : Récupération normale des balles ou message
                 resDiv.style.color = '#94a3b8';
                 resDiv.innerText = "🔄 Rien trouvé cette fois (1 chance sur 5). Réessaie !";
             }
@@ -653,7 +636,6 @@
                 resDiv.innerText = `❌ PERDU ! -40 points !`;
             }
             
-            // Retour à la normale après l'impact
             setTimeout(() => {
                 isBanqueActive = false;
                 startFlipAnimation(() => {
@@ -667,7 +649,6 @@
             document.getElementById('scoreDisplay').innerText = score;
             document.getElementById('ballsDisplay').innerText = ballsCount;
             
-            // Vérification Game Over
             if (ballsCount === 0 && balls.length === 0 && !isBanqueActive) {
                 document.getElementById('bestScoreDisplay').innerText = bestScore;
                 document.getElementById('gameOverOverlay').style.display = 'flex';
@@ -675,7 +656,7 @@
         }
 
         function animate() {
-            // Sous-échantillonnage physique x8 pour une étanchéité parfaite des collisions
+            // Sous-échantillonnage physique x8 pour une précision maximale
             const subSteps = 8;
             for (let s = 0; s < subSteps; s++) {
                 balls.forEach(ball => {
@@ -698,9 +679,21 @@
                             ball.vx *= -0.5;
                         }
 
-                        // Barrières obliques du haut
-                        barriers.forEach(b => {
-                            resolveLineCollision(ball, b.x1, b.y1, b.x2, b.y2);
+                        // Barrières obliques (collision circulaire rigoureuse)
+                        barrierPegs.forEach(bp => {
+                            let dx = ball.x - bp.x;
+                            let dy = ball.y - bp.y;
+                            let dist = Math.sqrt(dx * dx + dy * dy);
+                            if (dist < ball.radius + bp.radius) {
+                                let angle = Math.atan2(dy, dx);
+                                let speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+                                let randomKick = (Math.random() - 0.5) * 2;
+                                ball.vx = Math.cos(angle) * speed * 0.6 + randomKick;
+                                ball.vy = Math.sin(angle) * speed * 0.6;
+
+                                ball.x = bp.x + Math.cos(angle) * (ball.radius + bp.radius + 2);
+                                ball.y = bp.y + Math.sin(angle) * (ball.radius + bp.radius + 2);
+                            }
                         });
 
                         // Picots
@@ -720,7 +713,7 @@
                             }
                         });
 
-                        // Arrivée en bas
+                        // Arrivée fentes du bas
                         if (ball.y >= canvas.height - 40) {
                             ball.active = false;
                             slots.forEach(slot => {
@@ -745,16 +738,14 @@
             // Rendu graphique
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Barrières du haut
+            // Dessin des barrières obliques (lignes directrices visuelles)
             ctx.strokeStyle = '#475569';
             ctx.lineWidth = 4;
-            barriers.forEach(b => {
-                ctx.beginPath();
-                ctx.moveTo(b.x1, b.y1);
-                ctx.lineTo(b.x2, b.y2);
-                ctx.stroke();
-                ctx.closePath();
-            });
+            ctx.beginPath();
+            ctx.moveTo(0, 40); ctx.lineTo(50, 110);
+            ctx.moveTo(450, 40); ctx.lineTo(410, 110);
+            ctx.stroke();
+            ctx.closePath();
             ctx.lineWidth = 1;
 
             // Picots
